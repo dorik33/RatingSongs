@@ -1,21 +1,26 @@
 package main
 
-//TODO: init config: cleanenv
-//TODO: init logger: slog
-//TODO: init storage: psql
 //TODO: init router: chi, render
 //TODO: run server
 
 import (
 	"context"
 	"fmt"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"log/slog"
+	"net/http"
 	"os"
+	"os/signal"
 	"restApi/internal/config"
-	"restApi/internal/song"
+	"restApi/internal/http-server/handlers/rating_handlers"
+	"restApi/internal/http-server/handlers/song_handlers"
+	mwLogger "restApi/internal/http-server/middleware/logger"
+	ratingdb "restApi/internal/rating/db"
+	songdb "restApi/internal/song/db"
 	"restApi/pkg/client/postgresql"
 	"restApi/pkg/logger"
+	"syscall"
 	"time"
 )
 
@@ -35,23 +40,53 @@ func main() {
 	defer pool.Close()
 	log.Debug("Connected to postgresql")
 
-	newSong := song.Song{
-		Title:       "Another One Bites the Dust",
-		Artist:      "Queen",
-		Album:       "The Game",
-		ReleaseDate: time.Date(1980, 10, 10, 0, 0, 0, 0, time.UTC),
-	}
+	router := chi.NewRouter()
+	router.Use(middleware.RequestID)
+	router.Use(middleware.Logger)
+	router.Use(mwLogger.New(log))
+	router.Use(middleware.Recoverer)
+	router.Use(middleware.URLFormat)
 
-	err = InsertSong(pool, newSong)
-	if err != nil {
+	songRep := songdb.NewRepository(pool)
+	ratingRep := ratingdb.NewRepository(pool)
+	song_handlers.RegisterRoutes(router, songRep, log, context.Background())
+	rating_handlers.RegisterRoutes(router, ratingRep, log, context.Background())
+
+	if err = RunServer(cfg, router, log); err != nil {
 		log.Error(fmt.Sprintf("%+v", err))
 	}
 
-	fmt.Println("Song inserted successfully!")
 }
 
-func InsertSong(pool *pgxpool.Pool, s song.Song) error {
-	query := `INSERT INTO song (title, artist, album, release_date) VALUES ($1, $2, $3, $4)`
-	_, err := pool.Exec(context.Background(), query, s.Title, s.Artist, s.Album, s.ReleaseDate)
-	return err
+func RunServer(cfg *config.Config, router *chi.Mux, log *slog.Logger) error {
+	server := &http.Server{
+		Addr:         cfg.HTTPServer.Addres,
+		Handler:      router,
+		ReadTimeout:  cfg.HTTPServer.TimeOut,
+		WriteTimeout: cfg.HTTPServer.TimeOut,
+		IdleTimeout:  cfg.HTTPServer.IdleTimeout,
+	}
+
+	go func() {
+		log.Info("Server starting", "address", cfg.HTTPServer.Addres)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Error("Server error:", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Info("Shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := server.Shutdown(ctx); err != nil {
+		log.Error("Server forced to shutdown:", err)
+		return err
+	}
+
+	log.Info("Server exiting")
+	return nil
 }

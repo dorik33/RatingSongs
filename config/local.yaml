@@ -1,0 +1,12 @@
+env: "local"
+http_server:
+  addres: "localhost:8082"
+  timeout: 4s
+  idle_timeout: 60s
+storage:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: 1234
+  db_name: golang
+

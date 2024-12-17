@@ -1,10 +1,12 @@
-package users
+package song
 
 import "time"
 
-type Users struct {
-	ID        int       `json:id`
-	Username  string    `json:username`
-	Email     string    `json:email`
-	CreatedAt time.Time `json:created_at`
+type Song struct {
+	ID          int       `json:"id"`
+	Title       string    `json:"title"`
+	Artist      string    `json:"artist"`
+	Album       string    `json:"album"`
+	ReleaseDate time.Time `json:"release_date"`
+	CreatedAt   time.Time `json:"created_at"`
 }

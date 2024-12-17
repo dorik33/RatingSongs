@@ -1,0 +1,64 @@
+1. Оценки песен
+Сервер создан для оценивания песен
+
+2. Эндпоинты
+
+Создание новой оценки
+- Метод: POST
+- URL: /rating
+- Тело запроса:  application/json
+    * { "songId": <song_id>, "rating": <оценка>, "description": "<описание>" }
+    * songId: Целое число, идентификатор песни, которую оценивают.  Обязательное поле.
+    * rating: Целое число, рейтинг песни (например, от 1 до 100). Обязательное поле.
+    * description: Строка дополнительный комментарий к рейтингу.
+пример curl: curl -X POST -H "Content-Type: application/json" -d "{\"song_id\": 20, \"rating\": 60, \"description\": \"норм\"}" http://localhost:8082/rating
+
+Вывод всех существующих оценок
+- Метод: GET
+- URL: /ratings
+- Тело запроса:
+Ответ: массив json
+пример curl: curl -X GET http://localhost:8082/ratings
+
+Вывод всех существующих оценок по id песне
+- Метод: GET
+- URL: /ratingbysong
+- Тело запроса:
+Ответ: json
+пример curl: curl -X GET http://localhost:8082/ratingbysong?id=19
+
+Вывод оценки по id
+- Метод: GET
+- URL: /rating
+- Тело запроса:
+Ответ: json
+пример curl: curl http://localhost:8082/rating?id=4
+
+
+
+Создание новой песни
+- Метод: POST
+- URL: /song
+- Тело запроса:  application/json
+    * { "title": <название>, "artist": <автор>, "album": "<альбом>", "release_date": "<дата выхода>"}
+    * title: строка, Название созданной песни.  Обязательное поле.
+    * artist: строка, автор песни. Обязательное поле.
+    * album: строка, альбом, в который входит песня. Обязательное поле. (в случае отсутствия "-")
+    * release_date: дата, дата выхода песни. Обязательное поле.
+пример curl: curl -X POST -H "Content-Type: application/json" -d "{\"title\": \"чсв\", \"artist\": \"lida\", \"album\": \"-\", \"release_date\": \"2023-11-29T00:00:00Z\"}" http://localhost:8082/song
+
+Вывод всех существующих песен
+- Метод: GET
+- URL: /songs
+- Тело запроса:
+Ответ: массив json
+пример curl: curl http://localhost:8082/songs
+
+Вывод песни по id
+- Метод: GET
+- URL: /song
+- Тело запроса:
+Ответ: json
+пример curl: curl http://localhost:8082/song?id=19
+
+
